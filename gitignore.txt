@@ -1,0 +1,25 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.secret
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local runtime files
+*.log
+*.sqlite3
+*.db
+.DS_Store
+
+# Build/archive outputs
+*.zip
+build/
+dist/
+
+# Editors
+.vscode/
+.idea/
