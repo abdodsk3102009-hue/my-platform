@@ -17,7 +17,8 @@
 - WhatsApp Cloud API الرسمي:
   - مسار تجربة Meta Test Number.
   - ربط يدوي مؤقت بواسطة Phone Number ID وWABA ID وAccess Token وVerify Token.
-  - Webhook للتحقق واستقبال الرسائل وتمريرها إلى System Prompt ثم إرسال الرد عبر Meta.
+  - بعد التحقق يحاول الخادم تفعيل اشتراك التطبيق في Webhooks على WABA عبر `/{WABA_ID}/subscribed_apps`.
+  - Webhook للتحقق واستقبال الرسائل وتمريرها إلى System Prompt ثم إرسال الرد عبر Meta؛ يجب أيضًا إعداد Callback URL وحقل `messages` من لوحة Meta.
   - هيكل Embedded Signup الرسمي، بما في ذلك تبادل الكود على الخادم، عندما تجهز Meta App والصلاحيات.
 - لا يوجد OAuth ملتف، ولا Session Tokens، ولا تدوير حسابات لتجاوز حصص Google.
 
@@ -121,8 +122,8 @@ https://YOUR-SERVICE.onrender.com/health
 5. أنشئ Access Token مؤقتًا للاختبار أو Token مناسبًا حسب إعداد Meta.
 6. في Evoflow استخدم **WhatsApp → تجربة Meta المجانية** للتعليمات، ثم **ربط يدوي مؤقت** لإدخال:
    - `Phone Number ID`
-   - `WABA ID` اختياريًا في الاختبار
-   - `Permanent Access Token` أو Token الاختبار الذي تقبله Meta
+   - `WABA ID` أو Messaging Account ID؛ مطلوب لتفعيل اشتراك Webhook تلقائيًا
+   - `Access Token`؛ يمكن استخدام Token الاختبار المؤقت في البداية
    - `Verify Token` تختاره أنت
 7. اضغط **تحقق واربط**. الخادم يستدعي Graph API بدل قبول قيم غير مفحوصة.
 8. في Meta Webhooks استخدم:

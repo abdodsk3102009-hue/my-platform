@@ -442,13 +442,38 @@ def public_meta(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
         }
 
 
+def subscribe_meta_waba(waba_id: str, token: str) -> tuple[bool, str]:
+    """Subscribe this app to the WABA's webhook events.
+
+    Dashboard configuration is still required once in Meta, but calling
+    subscribed_apps here prevents the common case where the phone is valid
+    yet Meta never delivers incoming messages to the app.
+    """
+    url = f"https://graph.facebook.com/{GRAPH_VERSION}/{urllib.parse.quote(waba_id, safe='')}/subscribed_apps"
+    req = urllib.request.Request(url, data=b"{}", method="POST", headers={
+        "Authorization": "Bearer " + token, "Content-Type": "application/json",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            raw = response.read().decode("utf-8", "replace")
+            result = json.loads(raw or "{}")
+            if result.get("success") is False:
+                return False, raw[:280]
+            return True, raw[:280]
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", "replace")[:280]
+        return False, f"Meta HTTP {exc.code}: {detail}"
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        return False, str(exc)[:280]
+
+
 def meta_validate(data: dict[str, Any]) -> tuple[bool, str, dict[str, Any] | None]:
     phone_id = str(data.get("phone_number_id", "")).strip()
     waba_id = str(data.get("waba_id", "")).strip()
     token = str(data.get("access_token", "")).strip()
     verify = str(data.get("verify_token", "")).strip() or META["verify_token"]
-    if not phone_id or not token:
-        return False, "أدخل Phone Number ID وPermanent Access Token.", None
+    if not phone_id or not token or not waba_id:
+        return False, "أدخل Phone Number ID وWABA ID وAccess Token؛ WABA ID مطلوب لتفعيل Webhook.", None
     url = f"https://graph.facebook.com/{GRAPH_VERSION}/{urllib.parse.quote(phone_id, safe='')}?fields=display_phone_number,verified_name"
     req = urllib.request.Request(url, method="GET", headers={"Authorization": "Bearer " + token})
     try:
@@ -459,6 +484,9 @@ def meta_validate(data: dict[str, Any]) -> tuple[bool, str, dict[str, Any] | Non
         return False, f"Meta رفض التحقق (HTTP {exc.code}). تحقق من الصلاحيات والتوكن. {detail}", None
     except (urllib.error.URLError, TimeoutError) as exc:
         return False, f"تعذر الوصول إلى Meta الآن: {exc}", None
+    subscribed, subscription_detail = subscribe_meta_waba(waba_id, token)
+    if not subscribed:
+        return False, f"تم التحقق من Phone Number ID، لكن Meta لم تفعل اشتراك Webhook لهذا WABA: {subscription_detail}", None
     with META_LOCK:
         META.update({
             "phone_number_id": phone_id, "waba_id": waba_id,
@@ -466,7 +494,7 @@ def meta_validate(data: dict[str, Any]) -> tuple[bool, str, dict[str, Any] | Non
             "connected": True, "display_phone_number": result.get("display_phone_number", ""),
             "business_name": result.get("verified_name", ""), "last_error": "",
         })
-    return True, "تم التحقق من حساب Meta.", public_meta_dummy()
+    return True, "تم التحقق من حساب Meta وتفعيل اشتراك Webhook لهذا WABA.", public_meta_dummy()
 
 
 def public_meta_dummy() -> dict[str, Any]:
